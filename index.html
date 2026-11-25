@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <title>Lista de tareas</title>
+
+  <style>
+    /* Las tareas completadas se ven tachadas */
+    .completada {
+      text-decoration: line-through;
+    }
+  </style>
 </head>
 <body>
 
-  <!-- ========== PASO 1: EL ESQUELETO (HTML) ========== -->
+  <!-- ========== ESQUELETO (HTML) ========== -->
 
   <h1>Lista de tareas</h1>
 
@@ -14,10 +21,10 @@
   <input type="text" id="cajaTarea" placeholder="Escribe una tarea">
   <button id="botonAgregar">Agregar</button>
 
-  <!-- Aquí van a aparecer las tareas (empieza vacío) -->
+  <!-- Aquí se dibujan las tareas -->
   <ul id="listaTareas"></ul>
 
-  <!-- Ventana de confirmación: está oculta hasta que se pide con showModal() -->
+  <!-- Ventana de confirmación: oculta hasta que se pide con showModal() -->
   <dialog id="ventanaConfirmar">
     <p>Confirma borrar tarea no completada</p>
     <button id="botonConfirmar">Confirmar</button>
@@ -25,9 +32,9 @@
   </dialog>
 
 
-  <!-- ========== PASOS 3, 4 y 5: LA LÓGICA (JavaScript) ========== -->
+  <!-- ========== LÓGICA (JavaScript) ========== -->
   <script>
-    // Guardamos los elementos de la página en variables para usarlos después
+    // ---------- ELEMENTOS DE LA PÁGINA ----------
     const cajaTarea = document.getElementById("cajaTarea");
     const botonAgregar = document.getElementById("botonAgregar");
     const listaTareas = document.getElementById("listaTareas");
@@ -35,94 +42,160 @@
     const botonConfirmar = document.getElementById("botonConfirmar");
     const botonCancelar = document.getElementById("botonCancelar");
 
-    // Aquí guardamos la tarea que está esperando confirmación para borrarse
-    let tareaPorBorrar = null;
+    // ---------- DATOS ----------
+    // Nombre ("llave") con el que guardamos todo en localStorage
+    const CLAVE_GUARDADO = "tareas";
 
-    // Si el usuario toca "Confirmar", borramos la tarea guardada y cerramos la ventana
-    botonConfirmar.addEventListener("click", function () {
-      if (tareaPorBorrar) {
-        tareaPorBorrar.remove();
+    // Aquí viven las tareas. Cada una es un objeto así:
+    // { id: 1700000000000, texto: "Comprar pan", completada: false }
+    let tareas = [];
+
+    // Id de la tarea que espera confirmación para borrarse (null = ninguna)
+    let idPorBorrar = null;
+
+    // ---------- GUARDAR Y CARGAR (localStorage) ----------
+
+    // Guarda el arreglo "tareas" en el navegador.
+    // localStorage solo guarda texto, por eso usamos JSON.stringify
+    // para convertir el arreglo en texto.
+    function guardarTareas() {
+      try {
+        localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(tareas));
+      } catch (error) {
+        console.error("No se pudo guardar:", error);
       }
-      ventanaConfirmar.close();
-    });
+    }
 
-    // Si toca "Cancelar", solo cerramos la ventana (la tarea sigue en la lista)
-    botonCancelar.addEventListener("click", function () {
-      ventanaConfirmar.close();
-    });
+    // Lee lo guardado y lo convierte otra vez en arreglo con JSON.parse.
+    // Si no hay nada guardado (primera vez) o está dañado, empezamos vacío.
+    function cargarTareas() {
+      try {
+        const textoGuardado = localStorage.getItem(CLAVE_GUARDADO);
+        if (textoGuardado) {
+          const datos = JSON.parse(textoGuardado);
+          if (Array.isArray(datos)) {
+            tareas = datos;
+          }
+        }
+      } catch (error) {
+        console.error("No se pudo cargar:", error);
+        tareas = [];
+      }
+    }
 
-    // Cada vez que la ventana se cierra (con cualquier botón o con la tecla Esc),
-    // olvidamos la tarea guardada para no borrar nada por error
-    ventanaConfirmar.addEventListener("close", function () {
-      tareaPorBorrar = null;
-    });
+    // ---------- DIBUJAR LA LISTA ----------
+    // Borra lo que se ve y vuelve a dibujar todas las tareas del arreglo.
+    function dibujarLista() {
+      listaTareas.innerHTML = "";
 
-    // ---------- PASO 3: AGREGAR TAREA ----------
+      tareas.forEach(function (tarea) {
+        const elemento = document.createElement("li");
+
+        const textoTarea = document.createElement("span");
+        textoTarea.textContent = tarea.texto;
+
+        // Si la tarea está completada, le ponemos la clase que la tacha
+        if (tarea.completada) {
+          textoTarea.classList.add("completada");
+        }
+
+        // Al tocar el texto: cambiamos completada, guardamos y redibujamos
+        textoTarea.addEventListener("click", function () {
+          alternarCompletada(tarea.id);
+        });
+
+        const botonBorrar = document.createElement("button");
+        botonBorrar.textContent = "Borrar";
+
+        // Completada: se borra directo. No completada: pedimos confirmación.
+        botonBorrar.addEventListener("click", function () {
+          if (tarea.completada) {
+            borrarTarea(tarea.id);
+          } else {
+            idPorBorrar = tarea.id;
+            ventanaConfirmar.showModal();
+          }
+        });
+
+        elemento.appendChild(textoTarea);
+        elemento.appendChild(botonBorrar);
+        listaTareas.appendChild(elemento);
+      });
+    }
+
+    // ---------- ACCIONES (cada una guarda los cambios) ----------
+
     function agregarTarea() {
-      // .trim() quita los espacios sobrantes al inicio y al final
       const texto = cajaTarea.value.trim();
-
-      // Si la caja está vacía, no hacemos nada
       if (texto === "") {
         return;
       }
 
-      // Creamos un elemento de lista (<li>) para la nueva tarea
-      const tarea = document.createElement("li");
-
-      // Creamos un <span> con el texto de la tarea
-      const textoTarea = document.createElement("span");
-      textoTarea.textContent = texto;
-
-      // ---------- PASO 4: MARCAR COMO COMPLETADA ----------
-      // Al tocar el texto, se tacha. Si lo tocas otra vez, se destacha.
-      textoTarea.addEventListener("click", function () {
-        if (textoTarea.style.textDecoration === "line-through") {
-          textoTarea.style.textDecoration = "none";
-        } else {
-          textoTarea.style.textDecoration = "line-through";
-        }
+      tareas.push({
+        id: Date.now(),      // número único basado en la hora actual
+        texto: texto,
+        completada: false
       });
 
-      // ---------- PASO 5: BORRAR TAREA ----------
-      const botonBorrar = document.createElement("button");
-      botonBorrar.textContent = "Borrar";
+      guardarTareas();       // GUARDAMOS
+      dibujarLista();
 
-      // Al tocar "Borrar":
-      // - Si la tarea está completada (tachada), se borra directamente.
-      // - Si NO está completada, guardamos la tarea y pedimos confirmación.
-      botonBorrar.addEventListener("click", function () {
-        const estaCompletada = textoTarea.style.textDecoration === "line-through";
-
-        if (estaCompletada) {
-          tarea.remove();
-        } else {
-          tareaPorBorrar = tarea;
-          ventanaConfirmar.showModal();
-        }
-      });
-
-      // Juntamos las piezas: texto + botón dentro de la tarea
-      tarea.appendChild(textoTarea);
-      tarea.appendChild(botonBorrar);
-
-      // Agregamos la tarea completa a la lista
-      listaTareas.appendChild(tarea);
-
-      // Limpiamos la caja y dejamos el cursor listo para otra tarea
       cajaTarea.value = "";
       cajaTarea.focus();
     }
 
-    // Agregar al tocar el botón
+    function alternarCompletada(id) {
+      const tarea = tareas.find(function (t) {
+        return t.id === id;
+      });
+
+      if (tarea) {
+        tarea.completada = !tarea.completada;  // true pasa a false y viceversa
+        guardarTareas();                       // GUARDAMOS
+        dibujarLista();
+      }
+    }
+
+    function borrarTarea(id) {
+      // Nos quedamos con todas las tareas MENOS la que tiene ese id
+      tareas = tareas.filter(function (t) {
+        return t.id !== id;
+      });
+
+      guardarTareas();       // GUARDAMOS
+      dibujarLista();
+    }
+
+    // ---------- EVENTOS ----------
+
     botonAgregar.addEventListener("click", agregarTarea);
 
-    // Agregar también al presionar Enter dentro de la caja
     cajaTarea.addEventListener("keydown", function (evento) {
       if (evento.key === "Enter") {
         agregarTarea();
       }
     });
+
+    // Ventana de confirmación
+    botonConfirmar.addEventListener("click", function () {
+      if (idPorBorrar !== null) {
+        borrarTarea(idPorBorrar);
+      }
+      ventanaConfirmar.close();
+    });
+
+    botonCancelar.addEventListener("click", function () {
+      ventanaConfirmar.close();
+    });
+
+    // Al cerrarse la ventana (botón o tecla Esc), olvidamos la tarea pendiente
+    ventanaConfirmar.addEventListener("close", function () {
+      idPorBorrar = null;
+    });
+
+    // ---------- AL ABRIR LA PÁGINA ----------
+    cargarTareas();   // leemos lo guardado
+    dibujarLista();   // y lo mostramos
   </script>
 
 </body>
