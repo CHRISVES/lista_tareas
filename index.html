@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Lista de tareas</title>
+</head>
+<body>
+
+  <!-- ========== PASO 1: EL ESQUELETO (HTML) ========== -->
+
+  <h1>Lista de tareas</h1>
+
+  <!-- Caja para escribir y botón para agregar -->
+  <input type="text" id="cajaTarea" placeholder="Escribe una tarea">
+  <button id="botonAgregar">Agregar</button>
+
+  <!-- Aquí van a aparecer las tareas (empieza vacío) -->
+  <ul id="listaTareas"></ul>
+
+
+  <!-- ========== PASOS 3, 4 y 5: LA LÓGICA (JavaScript) ========== -->
+  <script>
+    // Guardamos los elementos de la página en variables para usarlos después
+    const cajaTarea = document.getElementById("cajaTarea");
+    const botonAgregar = document.getElementById("botonAgregar");
+    const listaTareas = document.getElementById("listaTareas");
+
+    // ---------- PASO 3: AGREGAR TAREA ----------
+    function agregarTarea() {
+      // .trim() quita los espacios sobrantes al inicio y al final
+      const texto = cajaTarea.value.trim();
+
+      // Si la caja está vacía, no hacemos nada
+      if (texto === "") {
+        return;
+      }
+
+      // Creamos un elemento de lista (<li>) para la nueva tarea
+      const tarea = document.createElement("li");
+
+      // Creamos un <span> con el texto de la tarea
+      const textoTarea = document.createElement("span");
+      textoTarea.textContent = texto;
+
+      // ---------- PASO 4: MARCAR COMO COMPLETADA ----------
+      // Al tocar el texto, se tacha. Si lo tocas otra vez, se destacha.
+      textoTarea.addEventListener("click", function () {
+        if (textoTarea.style.textDecoration === "line-through") {
+          textoTarea.style.textDecoration = "none";
+        } else {
+          textoTarea.style.textDecoration = "line-through";
+        }
+      });
+
+      // ---------- PASO 5: BORRAR TAREA ----------
+      const botonBorrar = document.createElement("button");
+      botonBorrar.textContent = "Borrar";
+
+      // Al tocar "Borrar", quitamos esa tarea de la lista
+      botonBorrar.addEventListener("click", function () {
+        tarea.remove();
+      });
+
+      // Juntamos las piezas: texto + botón dentro de la tarea
+      tarea.appendChild(textoTarea);
+      tarea.appendChild(botonBorrar);
+
+      // Agregamos la tarea completa a la lista
+      listaTareas.appendChild(tarea);
+
+      // Limpiamos la caja y dejamos el cursor listo para otra tarea
+      cajaTarea.value = "";
+      cajaTarea.focus();
+    }
+
+    // Agregar al tocar el botón
+    botonAgregar.addEventListener("click", agregarTarea);
+
+    // Agregar también al presionar Enter dentro de la caja
+    cajaTarea.addEventListener("keydown", function (evento) {
+      if (evento.key === "Enter") {
+        agregarTarea();
+      }
+    });
+  </script>
+
+</body>
+</html>
