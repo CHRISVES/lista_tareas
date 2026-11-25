@@ -17,6 +17,13 @@
   <!-- Aquí van a aparecer las tareas (empieza vacío) -->
   <ul id="listaTareas"></ul>
 
+  <!-- Ventana de confirmación: está oculta hasta que se pide con showModal() -->
+  <dialog id="ventanaConfirmar">
+    <p>Confirma borrar tarea no completada</p>
+    <button id="botonConfirmar">Confirmar</button>
+    <button id="botonCancelar">Cancelar</button>
+  </dialog>
+
 
   <!-- ========== PASOS 3, 4 y 5: LA LÓGICA (JavaScript) ========== -->
   <script>
@@ -24,6 +31,31 @@
     const cajaTarea = document.getElementById("cajaTarea");
     const botonAgregar = document.getElementById("botonAgregar");
     const listaTareas = document.getElementById("listaTareas");
+    const ventanaConfirmar = document.getElementById("ventanaConfirmar");
+    const botonConfirmar = document.getElementById("botonConfirmar");
+    const botonCancelar = document.getElementById("botonCancelar");
+
+    // Aquí guardamos la tarea que está esperando confirmación para borrarse
+    let tareaPorBorrar = null;
+
+    // Si el usuario toca "Confirmar", borramos la tarea guardada y cerramos la ventana
+    botonConfirmar.addEventListener("click", function () {
+      if (tareaPorBorrar) {
+        tareaPorBorrar.remove();
+      }
+      ventanaConfirmar.close();
+    });
+
+    // Si toca "Cancelar", solo cerramos la ventana (la tarea sigue en la lista)
+    botonCancelar.addEventListener("click", function () {
+      ventanaConfirmar.close();
+    });
+
+    // Cada vez que la ventana se cierra (con cualquier botón o con la tecla Esc),
+    // olvidamos la tarea guardada para no borrar nada por error
+    ventanaConfirmar.addEventListener("close", function () {
+      tareaPorBorrar = null;
+    });
 
     // ---------- PASO 3: AGREGAR TAREA ----------
     function agregarTarea() {
@@ -56,9 +88,18 @@
       const botonBorrar = document.createElement("button");
       botonBorrar.textContent = "Borrar";
 
-      // Al tocar "Borrar", quitamos esa tarea de la lista
+      // Al tocar "Borrar":
+      // - Si la tarea está completada (tachada), se borra directamente.
+      // - Si NO está completada, guardamos la tarea y pedimos confirmación.
       botonBorrar.addEventListener("click", function () {
-        tarea.remove();
+        const estaCompletada = textoTarea.style.textDecoration === "line-through";
+
+        if (estaCompletada) {
+          tarea.remove();
+        } else {
+          tareaPorBorrar = tarea;
+          ventanaConfirmar.showModal();
+        }
       });
 
       // Juntamos las piezas: texto + botón dentro de la tarea
